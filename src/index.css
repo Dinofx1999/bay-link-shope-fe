@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Màu chủ đạo mặc định — bị ghi đè bởi cấu hình admin lúc chạy */
+  --brand: #ee4d2d;
+  --brand-dark: #d73211;
+}
+
+body {
+  margin: 0;
+  background: #f5f5f5;
+}
+
+/* Hiệu ứng làm mờ nội dung bị khoá */
+.locked-blur {
+  filter: blur(14px) brightness(0.8);
+  transform: scale(1.05);
+}
