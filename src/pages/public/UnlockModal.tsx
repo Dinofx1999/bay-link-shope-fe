@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { message } from 'antd'
 import { publicApi } from '../../api'
 import type { MediaItem } from '../../types'
@@ -17,9 +17,10 @@ export default function UnlockModal({
   buttonText?: string
   onClose: () => void
 }) {
-  // Ghi nhận lượt xem chi tiết
+  // Lấy chi tiết (kèm nội dung media) + ghi nhận lượt xem
+  const [full, setFull] = useState<MediaItem>(item)
   useEffect(() => {
-    publicApi.detail(item._id).catch(() => {})
+    publicApi.detail(item._id).then((r) => setFull(r.item)).catch(() => {})
   }, [item._id])
 
   const onShare = async () => {
@@ -50,7 +51,7 @@ export default function UnlockModal({
           </div>
         </div>
 
-        <MediaGate item={item} lockMessage={lockMessage} buttonText={buttonText} />
+        <MediaGate item={full} lockMessage={lockMessage} buttonText={buttonText} />
       </div>
     </div>
   )
