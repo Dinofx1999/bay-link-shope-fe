@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import { Layout, Menu, Button, Drawer, Grid } from 'antd'
 import { LayoutDashboard, Film, Settings as SettingsIcon, LogOut, ExternalLink, Menu as MenuIcon } from 'lucide-react'
+import { APP_VERSION } from '../version'
 
 const { Sider, Header, Content } = Layout
 const { useBreakpoint } = Grid
@@ -23,8 +24,11 @@ export default function AdminLayout() {
   const current = loc.pathname.split('/')[2] || 'dashboard'
 
   const logo = (
-    <div className="h-16 flex items-center gap-2 px-4 font-bold text-brand">
-      <span className="text-2xl">🔥</span> Affiliate Hub
+    <div className="pt-3 pb-2 px-4">
+      <div className="flex items-center gap-2 font-bold text-brand">
+        <span className="text-2xl">🔥</span> Affiliate Hub
+      </div>
+      <div className="text-[11px] text-gray-400 mt-0.5 pl-9">Phiên bản v{APP_VERSION}</div>
     </div>
   )
 

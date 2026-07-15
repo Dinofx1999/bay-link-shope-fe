@@ -1,15 +1,25 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { publicApi } from '../../api'
 import type { MediaItem, SiteConfig } from '../../types'
 import { Lock, Play, Search, Eye, Flame, ExternalLink, Images } from 'lucide-react'
 import UnlockModal from './UnlockModal'
+import { APP_VERSION } from '../../version'
 
 export default function Home() {
+  const nav = useNavigate()
   const [config, setConfig] = useState<SiteConfig | null>(null)
   const [items, setItems] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [active, setActive] = useState<MediaItem | null>(null)
+
+  // Mở nội dung: mobile → đi thẳng trang /m/:id (back là tự hiện); desktop → modal cho tiện.
+  const openItem = (it: MediaItem) => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    if (isMobile) nav(`/m/${it._id}`)
+    else setActive(it)
+  }
 
   const load = useCallback(async (search = '') => {
     setLoading(true)
@@ -81,7 +91,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {items.map((item) => (
-              <Card key={item._id} item={item} onOpen={() => setActive(item)} />
+              <Card key={item._id} item={item} onOpen={() => openItem(item)} />
             ))}
           </div>
         )}
@@ -90,7 +100,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t bg-white">
         <div className="max-w-6xl mx-auto px-4 py-6 text-sm text-gray-500 flex flex-wrap gap-4 justify-between">
-          <span>© {new Date().getFullYear()} {config?.siteName || 'Affiliate Hub'}</span>
+          <span>© {new Date().getFullYear()} {config?.siteName || 'Affiliate Hub'} · <span className="text-gray-400">v{APP_VERSION}</span></span>
           <div className="flex gap-4">
             {config?.contact?.facebook && <a href={config.contact.facebook} target="_blank" className="hover:text-brand">Facebook</a>}
             {config?.contact?.tiktok && <a href={config.contact.tiktok} target="_blank" className="hover:text-brand">TikTok</a>}
