@@ -1,6 +1,6 @@
 // Lưu trạng thái "đã mở khoá" của từng nội dung vào localStorage, hạn 10 phút.
-// ⭐ TẠM TẮT để dễ test (mỗi lần tải là trạng thái mờ ban đầu). Bật lại: ENABLED = true.
-const ENABLED = false
+// Bật nhớ 10 phút (cần cho luồng "quay lại thấy nội dung" trên webview Facebook).
+const ENABLED = true
 
 const PREFIX = 'aff_unlock_'
 const TTL = 10 * 60 * 1000 // 10 phút
