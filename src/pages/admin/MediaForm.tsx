@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Modal, Form, Input, Select, Switch, Button, Upload, message, Divider, Grid } from 'antd'
-import { Plus, Trash2, UploadCloud } from 'lucide-react'
+import { Plus, Trash2, UploadCloud, X } from 'lucide-react'
 import { mediaApi, uploadApi } from '../../api'
-import type { MediaItem } from '../../types'
+import type { MediaItem, GalleryItem } from '../../types'
+
+// Đoán loại nội dung theo đuôi URL (cho trường hợp dán URL trực tiếp)
+function guessType(url: string): 'image' | 'video' {
+  return /\.(mp4|webm|mov|m4v|avi|mkv)(\?|$)/i.test(url) ? 'video' : 'image'
+}
 
 export default function MediaForm({
   open,
@@ -18,7 +23,8 @@ export default function MediaForm({
   const screens = Grid.useBreakpoint()
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
-  const [mediaUrl, setMediaUrl] = useState('')
+  const [mediaList, setMediaList] = useState<GalleryItem[]>([]) // ⭐ nhiều ảnh/video
+  const [urlInput, setUrlInput] = useState('')
   const [thumbnailUrl, setThumbnailUrl] = useState('')
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const [uploadingThumb, setUploadingThumb] = useState(false)
@@ -31,50 +37,79 @@ export default function MediaForm({
           tags: item.tags || [],
           affiliateLinks: item.affiliateLinks?.length ? item.affiliateLinks : [{ label: '', url: '' }],
         })
-        setMediaUrl(item.mediaUrl || '')
+        // dữ liệu mới (media[]) hoặc cũ (mediaUrl) đều nạp được
+        const list = item.media?.length
+          ? item.media
+          : item.mediaUrl
+          ? [{ type: item.type, url: item.mediaUrl }]
+          : []
+        setMediaList(list)
         setThumbnailUrl(item.thumbnailUrl || '')
       } else {
         form.resetFields()
         form.setFieldsValue({
-          type: 'image',
           isPublished: true,
           pinned: false,
           affiliateLinks: [{ label: 'Shopee', url: '' }],
         })
-        setMediaUrl('')
+        setMediaList([])
         setThumbnailUrl('')
       }
+      setUrlInput('')
     }
   }, [open, item])
 
-  const doUpload = async (file: File, kind: 'media' | 'thumb') => {
-    const setU = kind === 'media' ? setUploadingMedia : setUploadingThumb
-    setU(true)
+  // Upload NHIỀU file nội dung → thêm hết vào gallery
+  const doUploadMedia = async (files: File[]) => {
+    setUploadingMedia(true)
     try {
-      const res = await uploadApi.file(file)
-      if (kind === 'media') {
-        setMediaUrl(res.url)
-        // tự đoán loại theo file
-        form.setFieldValue('type', res.type)
-        if (!thumbnailUrl && res.type === 'image') setThumbnailUrl(res.url)
-      } else {
-        setThumbnailUrl(res.url)
-      }
-      message.success('Tải lên thành công')
+      const results = await Promise.all(files.map((f) => uploadApi.file(f)))
+      const added: GalleryItem[] = results.map((r) => ({ type: r.type, url: r.url }))
+      setMediaList((prev) => {
+        const next = [...prev, ...added]
+        // tự lấy ảnh đầu tiên làm thumbnail nếu chưa có
+        if (!thumbnailUrl) {
+          const firstImg = next.find((m) => m.type === 'image')
+          if (firstImg) setThumbnailUrl(firstImg.url)
+        }
+        return next
+      })
+      message.success(`Đã tải lên ${added.length} file`)
     } catch (e: any) {
       message.error(e.response?.data?.message || 'Tải lên thất bại')
     } finally {
-      setU(false)
+      setUploadingMedia(false)
     }
-    return false
   }
+
+  const doUploadThumb = async (file: File) => {
+    setUploadingThumb(true)
+    try {
+      const res = await uploadApi.file(file)
+      setThumbnailUrl(res.url)
+      message.success('Đã tải ảnh xem trước')
+    } catch (e: any) {
+      message.error(e.response?.data?.message || 'Tải lên thất bại')
+    } finally {
+      setUploadingThumb(false)
+    }
+  }
+
+  const addUrl = () => {
+    const url = urlInput.trim()
+    if (!url) return
+    setMediaList((prev) => [...prev, { type: guessType(url), url }])
+    setUrlInput('')
+  }
+
+  const removeMedia = (idx: number) => setMediaList((prev) => prev.filter((_, i) => i !== idx))
 
   const onSubmit = async () => {
     const v = await form.validateFields()
-    if (!mediaUrl) return message.error('Hãy tải lên hoặc dán URL nội dung (clip/ảnh)')
+    if (mediaList.length === 0) return message.error('Hãy thêm ít nhất 1 ảnh hoặc video')
     const payload: any = {
       ...v,
-      mediaUrl,
+      media: mediaList,
       thumbnailUrl,
       affiliateLinks: (v.affiliateLinks || []).filter((l: any) => l && l.url),
     }
@@ -113,42 +148,94 @@ export default function MediaForm({
           <Input.TextArea rows={2} placeholder="Mô tả ngắn hiển thị khi mở khoá" />
         </Form.Item>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Form.Item name="type" label="Loại nội dung">
-            <Select
-              options={[
-                { value: 'image', label: '🖼️ Ảnh' },
-                { value: 'video', label: '🎬 Video / Clip' },
-              ]}
+        <Form.Item name="tags" label="Tags">
+          <Select mode="tags" placeholder="mỹ-phẩm, hot, sale..." tokenSeparators={[',']} />
+        </Form.Item>
+
+        {/* Nội dung: NHIỀU ảnh/video */}
+        <div className="mb-3">
+          <div className="text-sm mb-1 font-medium">
+            Ảnh / Video <span className="text-red-500">*</span>{' '}
+            <span className="text-gray-400 font-normal">(chọn được nhiều file)</span>
+          </div>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Upload
+              showUploadList={false}
+              multiple
+              accept="image/*,video/*"
+              beforeUpload={(file, fileList) => {
+                // beforeUpload chạy cho từng file — chỉ kích hoạt 1 lần ở file đầu, tải cả lô
+                if (file === fileList[0]) doUploadMedia(fileList as File[])
+                return Upload.LIST_IGNORE
+              }}
+            >
+              <Button icon={<UploadCloud size={16} />} loading={uploadingMedia}>
+                Tải lên (nhiều)
+              </Button>
+            </Upload>
+            <span className="text-xs text-gray-400">{mediaList.length} file</span>
+          </div>
+
+          {/* Thêm bằng URL */}
+          <div className="flex gap-2 mt-2">
+            <Input
+              size="small"
+              placeholder="hoặc dán URL ảnh/video rồi bấm Thêm"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onPressEnter={(e) => {
+                e.preventDefault()
+                addUrl()
+              }}
             />
-          </Form.Item>
-          <Form.Item name="tags" label="Tags">
-            <Select mode="tags" placeholder="mỹ-phẩm, hot, sale..." tokenSeparators={[',']} />
-          </Form.Item>
+            <Button size="small" onClick={addUrl}>Thêm</Button>
+          </div>
+
+          {/* Lưới xem trước + xoá + kéo đổi thứ tự bằng nút */}
+          {mediaList.length > 0 && (
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 mt-2">
+              {mediaList.map((m, i) => (
+                <div key={i} className="relative aspect-square rounded border overflow-hidden bg-gray-100">
+                  {m.type === 'video' ? (
+                    <div className="w-full h-full grid place-items-center text-2xl">🎬</div>
+                  ) : (
+                    <img src={m.url} className="w-full h-full object-cover" />
+                  )}
+                  {i === 0 && (
+                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] text-center">
+                      Bìa/Chính
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeMedia(i)}
+                    className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-500 text-white rounded-full p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Upload nội dung */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <div className="text-sm mb-1">Nội dung (clip/ảnh) <span className="text-red-500">*</span></div>
-            <Upload showUploadList={false} beforeUpload={(f) => doUpload(f as File, 'media')} accept="image/*,video/*">
-              <Button icon={<UploadCloud size={16} />} loading={uploadingMedia}>Tải lên</Button>
-            </Upload>
-            {mediaUrl && <div className="text-xs text-green-600 mt-1 break-all">✓ {mediaUrl}</div>}
-            <Input
-              className="mt-1"
-              size="small"
-              placeholder="hoặc dán URL trực tiếp"
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-            />
+        {/* Ảnh bìa (thumbnail) — để trống sẽ tự dùng ảnh đầu tiên */}
+        <div className="mb-1">
+          <div className="text-sm mb-1">
+            Ảnh xem trước / bìa <span className="text-gray-400">(để trống = tự dùng ảnh đầu tiên)</span>
           </div>
-          <div>
-            <div className="text-sm mb-1">Ảnh xem trước (thumbnail)</div>
-            <Upload showUploadList={false} beforeUpload={(f) => doUpload(f as File, 'thumb')} accept="image/*">
-              <Button icon={<UploadCloud size={16} />} loading={uploadingThumb}>Tải lên</Button>
+          <div className="flex items-center gap-2">
+            <Upload
+              showUploadList={false}
+              accept="image/*"
+              beforeUpload={(f) => {
+                doUploadThumb(f as File)
+                return false
+              }}
+            >
+              <Button icon={<UploadCloud size={16} />} loading={uploadingThumb}>Tải ảnh bìa</Button>
             </Upload>
-            {thumbnailUrl && <img src={thumbnailUrl} className="mt-1 w-16 h-16 object-cover rounded border" />}
+            {thumbnailUrl && <img src={thumbnailUrl} className="w-14 h-14 object-cover rounded border" />}
           </div>
         </div>
 

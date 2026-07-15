@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { publicApi } from '../../api'
-import type { MediaItem } from '../../types'
+import type { MediaItem, GalleryItem } from '../../types'
 import { Lock, Eye, CheckCircle2 } from 'lucide-react'
 
 // Phần "cổng khoá + nút mở khoá xem" — dùng chung cho modal (trang chủ) và trang chia sẻ /m/:id
@@ -14,7 +14,7 @@ export default function MediaGate({
   buttonText?: string
 }) {
   const [unlocked, setUnlocked] = useState(false)
-  const [mediaUrl, setMediaUrl] = useState('')
+  const [items, setItems] = useState<GalleryItem[]>([])
   const [loading, setLoading] = useState(false)
 
   const viewLabel = buttonText || 'Bấm vào đây để xem'
@@ -26,7 +26,13 @@ export default function MediaGate({
     setLoading(true)
     try {
       const res = await publicApi.unlock(item._id)
-      setMediaUrl(res.media.mediaUrl)
+      // hỗ trợ cả API mới (items[]) lẫn cũ (mediaUrl)
+      const gallery: GalleryItem[] = res.media.items?.length
+        ? res.media.items
+        : res.media.mediaUrl
+        ? [{ type: res.media.type, url: res.media.mediaUrl }]
+        : []
+      setItems(gallery)
       setUnlocked(true)
     } catch {
       /* vẫn mở link affiliate dù unlock lỗi */
@@ -40,11 +46,22 @@ export default function MediaGate({
       {/* Vùng media */}
       <div className="relative bg-black">
         {unlocked ? (
-          item.type === 'video' ? (
-            <video src={mediaUrl} controls autoPlay className="w-full max-h-[60vh]" />
-          ) : (
-            <img src={mediaUrl} alt={item.title} className="w-full max-h-[60vh] object-contain" />
-          )
+          <div className="bg-black">
+            {items.map((m, i) => (
+              <div key={i} className="relative">
+                {items.length > 1 && (
+                  <span className="absolute top-2 right-2 z-10 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+                    {i + 1}/{items.length}
+                  </span>
+                )}
+                {m.type === 'video' ? (
+                  <video src={m.url} controls className="w-full max-h-[70vh] bg-black" />
+                ) : (
+                  <img src={m.url} alt={`${item.title} ${i + 1}`} className="w-full object-contain bg-black" />
+                )}
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="relative">
             {item.thumbnailUrl ? (

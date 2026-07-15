@@ -6,11 +6,18 @@ export interface AffiliateLink {
   clicks?: number
 }
 
+export interface GalleryItem {
+  type: 'image' | 'video'
+  url: string
+}
+
 export interface MediaItem {
   _id: string
   title: string
   description: string
   type: 'image' | 'video'
+  media?: GalleryItem[]
+  mediaCount?: number
   mediaUrl?: string
   thumbnailUrl: string
   affiliateLinks: AffiliateLink[]

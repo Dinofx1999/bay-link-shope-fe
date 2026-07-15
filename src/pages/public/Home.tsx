@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { publicApi } from '../../api'
 import type { MediaItem, SiteConfig } from '../../types'
-import { Lock, Play, Search, Eye, Flame, ExternalLink } from 'lucide-react'
+import { Lock, Play, Search, Eye, Flame, ExternalLink, Images } from 'lucide-react'
 import UnlockModal from './UnlockModal'
 
 export default function Home() {
@@ -139,6 +139,11 @@ function Card({ item, onOpen }: { item: MediaItem; onOpen: () => void }) {
         <span className="absolute top-2 right-2 bg-black/60 text-white text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1">
           <ExternalLink size={11} /> Ưu đãi
         </span>
+        {(item.mediaCount || 0) > 1 && (
+          <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[11px] px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Images size={11} /> {item.mediaCount}
+          </span>
+        )}
       </div>
       <div className="p-2.5">
         <h3 className="font-semibold text-sm text-gray-800 line-clamp-2 leading-snug">{item.title}</h3>
