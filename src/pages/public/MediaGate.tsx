@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { publicApi } from '../../api'
 import type { MediaItem, GalleryItem } from '../../types'
-import { Eye, CheckCircle2 } from 'lucide-react'
+import { Eye, ShoppingBag } from 'lucide-react'
 import { markUnlocked, isUnlocked } from '../../utils/unlockStore'
 
-// "Cổng affiliate mềm": nội dung tải sẵn nhưng để MỜ; bấm → mở link affiliate (tab mới, ghi log)
-// đồng thời BỎ MỜ NGAY tại chỗ. Không cần quay lại → hết lỗi trên webview FB/Zalo.
+// Tách rời "xem nội dung" và "bấm Shopee":
+//  • Bấm ảnh mờ → hiện nội dung NGAY, KHÔNG điều hướng → mượt trên webview Facebook/Zalo.
+//  • Nút Shopee riêng bên dưới → mở affiliate (điều hướng đi cũng không ảnh hưởng nội dung).
 export default function MediaGate({
   item,
   lockMessage,
@@ -23,19 +24,17 @@ export default function MediaGate({
 
   const [revealed, setRevealed] = useState(false)
   const viewLabel = buttonText || 'Bấm vào đây để xem'
-  const multi = (item.affiliateLinks || []).length > 1
-  const hasLinks = (item.affiliateLinks || []).length > 0
+  const links = item.affiliateLinks || []
 
-  // Đã mở trong 10 phút gần đây → hiện luôn, khỏi bấm
   useEffect(() => {
     if (isUnlocked(item._id)) setRevealed(true)
   }, [item._id])
 
-  // Bấm ưu đãi: đánh dấu + hiện NGAY (dữ liệu đã có sẵn) + đếm lượt. Thẻ <a> lo việc mở Shopee.
+  // Hiện nội dung — KHÔNG điều hướng (an toàn trên mọi webview)
   const onReveal = () => {
     markUnlocked(item._id)
     setRevealed(true)
-    publicApi.unlock(item._id, false).catch(() => {}) // đếm lượt mở (không chặn)
+    publicApi.unlock(item._id, false).catch(() => {}) // đếm lượt xem
   }
 
   const cover = item.thumbnailUrl || (gallery[0]?.type === 'image' ? gallery[0].url : '')
@@ -62,14 +61,8 @@ export default function MediaGate({
             ))}
           </div>
         ) : (
-          // Ảnh bìa MỜ + overlay dụ bấm — là thẻ <a> mở affiliate ở ngữ cảnh mới
-          <a
-            href={hasLinks ? publicApi.goUrl(item._id, 0) : undefined}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onReveal}
-            className="relative block cursor-pointer select-none"
-          >
+          // Ảnh mờ + overlay — BẤM LÀ HIỆN NGAY (button, không điều hướng)
+          <button onClick={onReveal} className="relative block w-full cursor-pointer select-none">
             {cover ? (
               <img src={cover} className="w-full max-h-[55vh] object-cover locked-blur" />
             ) : (
@@ -83,47 +76,41 @@ export default function MediaGate({
                   <Eye size={30} />
                 </div>
                 <p className="font-bold text-lg">🔥 {viewLabel}</p>
-                <p className="text-white/80 text-sm mt-1">{lockMessage || 'Bấm để xem nội dung đầy đủ 👆'}</p>
+                <p className="text-white/80 text-sm mt-1">{lockMessage || 'Bấm vào ảnh để xem nội dung 👆'}</p>
               </div>
             </div>
-          </a>
+          </button>
         )}
       </div>
 
       {/* Mô tả */}
       {item.description && <p className="px-4 pt-3 text-sm text-gray-600 whitespace-pre-wrap">{item.description}</p>}
 
-      {/* Nút bên dưới */}
+      {/* Nút xem (khi chưa mở) + nút ưu đãi Shopee (luôn hiện) */}
       <div className="p-4 space-y-2">
-        {revealed ? (
-          <div className="flex items-center gap-2 text-green-600 bg-green-50 rounded-lg px-3 py-2 text-sm">
-            <CheckCircle2 size={18} /> Đang xem nội dung — chúc bạn vui vẻ 💚
-          </div>
-        ) : (
+        {!revealed && (
+          <button
+            onClick={onReveal}
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3.5 rounded-xl transition text-base"
+          >
+            <Eye size={20} /> {viewLabel}
+          </button>
+        )}
+
+        {links.length > 0 && (
           <>
-            {!multi && <p className="text-xs text-gray-500 mb-1 text-center">Bấm nút bên dưới để xem nội dung</p>}
-            {(item.affiliateLinks || []).map((link) => (
+            <p className="text-xs text-gray-400 text-center pt-1">🛒 Ưu đãi hot — ủng hộ mình nhé:</p>
+            {links.map((link) => (
               <a
                 key={link.index}
                 href={publicApi.goUrl(item._id, link.index!)}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={onReveal}
-                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3.5 rounded-xl transition text-base"
+                className="w-full flex items-center justify-center gap-2 bg-orange-50 hover:bg-orange-100 text-brand border border-brand/30 font-semibold py-3 rounded-xl transition"
               >
-                <Eye size={20} />
-                {viewLabel}
-                {multi && <span className="opacity-80 font-normal text-sm">({link.label})</span>}
+                <ShoppingBag size={18} /> {link.label}
               </a>
             ))}
-            {!hasLinks && (
-              <button
-                onClick={onReveal}
-                className="w-full flex items-center justify-center gap-2 bg-brand text-white font-semibold py-3.5 rounded-xl text-base"
-              >
-                <Eye size={20} /> {viewLabel}
-              </button>
-            )}
           </>
         )}
       </div>
