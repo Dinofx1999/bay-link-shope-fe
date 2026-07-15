@@ -5,6 +5,9 @@ import { mediaApi } from '../../api'
 import type { MediaItem } from '../../types'
 import MediaForm from './MediaForm'
 import { shareUrl, copyLink } from '../../utils/share'
+import { formatVND } from '../../utils/format'
+
+const isAdmin = () => JSON.parse(localStorage.getItem('aff_user') || '{}').role === 'Admin'
 
 export default function MediaList() {
   const [items, setItems] = useState<MediaItem[]>([])
@@ -96,10 +99,14 @@ export default function MediaList() {
               </div>
             ),
           },
+          ...(isAdmin()
+            ? [{ title: 'Tác giả', dataIndex: 'authorName', width: 130, render: (v: string) => v || '—' }]
+            : []),
           { title: 'Loại', dataIndex: 'type', width: 90, render: (t) => (t === 'video' ? <Tag color="red">Video</Tag> : <Tag color="blue">Ảnh</Tag>) },
           { title: 'Link', width: 70, render: (_, r) => <Tag>{r.affiliateLinks?.length || 0}</Tag> },
           { title: 'Xem', dataIndex: 'views', width: 70 },
           { title: 'Mở khoá', dataIndex: 'unlocks', width: 90 },
+          { title: 'Lương', dataIndex: 'earnings', width: 110, render: (v: number) => <b className="text-brand">{formatVND(v)}</b> },
           {
             title: 'Hiển thị',
             width: 90,

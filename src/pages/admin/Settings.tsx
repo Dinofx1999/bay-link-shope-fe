@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Form, Input, Button, message, Divider, ColorPicker, Space } from 'antd'
+import { Card, Form, Input, Button, message, Divider, ColorPicker, Space, InputNumber, Select } from 'antd'
 import { configApi, authApi } from '../../api'
 import { applyTheme } from '../../utils/theme'
 
@@ -80,6 +80,43 @@ export default function Settings() {
           >
             <Input placeholder="Bấm vào đây để xem" />
           </Form.Item>
+          <Form.Item
+            name="unlockTtlMinutes"
+            label="Thời gian nhớ đã mở khoá (phút)"
+            tooltip="Trong khoảng này, khách xem lại nội dung đã mở KHÔNG phải bấm link nữa. Đặt 0 để tắt (luôn bắt bấm)."
+          >
+            <InputNumber min={0} max={1440} step={1} className="!w-full" addonAfter="phút" />
+          </Form.Item>
+
+          <Divider orientation="left" className="!text-sm">💰 Lương cộng tác viên</Divider>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Form.Item
+              name={['salary', 'mode']}
+              label="Cách tính lương"
+              tooltip="Áp dụng chung. Có thể ghi đè bằng lương/bài của từng người hoặc lương riêng của từng bài."
+            >
+              <Select
+                options={[
+                  { value: 'per_post', label: 'Cố định mỗi bài đăng' },
+                  { value: 'per_view', label: 'Theo lượt xem' },
+                  { value: 'per_unlock', label: 'Theo lượt mở khoá' },
+                  { value: 'per_click', label: 'Theo click affiliate' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name={['salary', 'rate']} label="Đơn giá (đồng)">
+              <InputNumber<number>
+                min={0}
+                step={500}
+                className="!w-full"
+                formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                parser={(v) => Number((v || '').replace(/\./g, '')) || 0}
+              />
+            </Form.Item>
+          </div>
+          <p className="text-xs text-gray-400 -mt-1 mb-2">
+            Thứ tự ưu tiên: lương riêng của bài → lương/bài của cộng tác viên → công thức chung ở đây.
+          </p>
 
           <Divider orientation="left" className="!text-sm">Liên hệ / Mạng xã hội</Divider>
           <Form.Item name={['contact', 'facebook']} label="Facebook">

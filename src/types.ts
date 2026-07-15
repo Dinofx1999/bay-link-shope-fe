@@ -29,6 +29,29 @@ export interface MediaItem {
   order?: number
   locked?: boolean
   createdAt?: string
+  author?: string
+  authorName?: string
+  pay?: number
+  earnings?: number
+}
+
+export interface User {
+  _id: string
+  username: string
+  fullName: string
+  role: 'Admin' | 'User'
+  isActive: boolean
+  payPerPost: number
+  note?: string
+  posts?: number
+  views?: number
+  earnings?: number
+  createdAt?: string
+}
+
+export interface SalaryConfig {
+  mode: 'per_post' | 'per_view' | 'per_unlock' | 'per_click'
+  rate: number
 }
 
 export interface SiteConfig {
@@ -39,6 +62,8 @@ export interface SiteConfig {
   gateMode: string
   lockMessage: string
   unlockButtonText: string
+  unlockTtlMinutes: number
+  salary?: SalaryConfig
   contact: { facebook: string; tiktok: string; zalo: string }
 }
 
@@ -48,5 +73,7 @@ export interface Overview {
   totalViews: number
   totalUnlocks: number
   totalClicks: number
-  topMedia: Array<{ _id: string; title: string; type: string; views: number; unlocks: number; clicks: number }>
+  totalEarnings: number
+  topMedia: Array<{ _id: string; title: string; type: string; views: number; unlocks: number; clicks: number; authorName?: string; earnings?: number }>
+  byUser?: Array<{ id: string; name: string; posts: number; views: number; earnings: number }>
 }

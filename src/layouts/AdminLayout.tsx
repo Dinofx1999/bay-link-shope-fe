@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import { Layout, Menu, Button, Drawer, Grid } from 'antd'
-import { LayoutDashboard, Film, Settings as SettingsIcon, LogOut, ExternalLink, Menu as MenuIcon } from 'lucide-react'
+import { LayoutDashboard, Film, Settings as SettingsIcon, LogOut, ExternalLink, Menu as MenuIcon, Users as UsersIcon } from 'lucide-react'
 import { APP_VERSION } from '../version'
+import type { ReactNode } from 'react'
 
 const { Sider, Header, Content } = Layout
 const { useBreakpoint } = Grid
@@ -32,18 +33,18 @@ export default function AdminLayout() {
     </div>
   )
 
-  const menu = (
-    <Menu
-      mode="inline"
-      selectedKeys={[current]}
-      onClick={() => setDrawerOpen(false)}
-      items={[
-        { key: 'dashboard', icon: <LayoutDashboard size={18} />, label: <Link to="/admin/dashboard">Tổng quan</Link> },
-        { key: 'media', icon: <Film size={18} />, label: <Link to="/admin/media">Nội dung</Link> },
-        { key: 'settings', icon: <SettingsIcon size={18} />, label: <Link to="/admin/settings">Cài đặt</Link> },
-      ]}
-    />
-  )
+  const isAdmin = user.role === 'Admin'
+  const menuItems: { key: string; icon: ReactNode; label: ReactNode }[] = [
+    { key: 'dashboard', icon: <LayoutDashboard size={18} />, label: <Link to="/admin/dashboard">Tổng quan</Link> },
+    { key: 'media', icon: <Film size={18} />, label: <Link to="/admin/media">Nội dung</Link> },
+  ]
+  if (isAdmin) {
+    menuItems.push(
+      { key: 'users', icon: <UsersIcon size={18} />, label: <Link to="/admin/users">Người dùng</Link> },
+      { key: 'settings', icon: <SettingsIcon size={18} />, label: <Link to="/admin/settings">Cài đặt</Link> }
+    )
+  }
+  const menu = <Menu mode="inline" selectedKeys={[current]} onClick={() => setDrawerOpen(false)} items={menuItems} />
 
   return (
     <Layout className="min-h-screen">
@@ -113,5 +114,5 @@ export default function AdminLayout() {
 }
 
 function menuTitle(k: string) {
-  return { dashboard: 'Tổng quan', media: 'Quản lý nội dung', settings: 'Cài đặt' }[k] || ''
+  return { dashboard: 'Tổng quan', media: 'Quản lý nội dung', users: 'Người dùng', settings: 'Cài đặt' }[k] || ''
 }

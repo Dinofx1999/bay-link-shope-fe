@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Card, Row, Col, Table, Statistic, Spin } from 'antd'
-import { Eye, Lock, MousePointerClick, Film } from 'lucide-react'
+import { Eye, Lock, MousePointerClick, Film, Wallet } from 'lucide-react'
 import { statsApi } from '../../api'
 import type { Overview } from '../../types'
+import { formatVND } from '../../utils/format'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+
+const isAdmin = () => JSON.parse(localStorage.getItem('aff_user') || '{}').role === 'Admin'
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Overview | null>(null)
@@ -22,10 +25,11 @@ export default function Dashboard() {
   if (loading) return <div className="grid place-items-center py-20"><Spin size="large" /></div>
 
   const cards = [
-    { title: 'Nội dung', value: stats?.totalMedia, sub: `${stats?.published} đang hiển thị`, icon: <Film />, color: '#ee4d2d' },
-    { title: 'Lượt xem', value: stats?.totalViews, icon: <Eye />, color: '#1677ff' },
-    { title: 'Lượt mở khoá', value: stats?.totalUnlocks, icon: <Lock />, color: '#52c41a' },
-    { title: 'Click affiliate', value: stats?.totalClicks, icon: <MousePointerClick />, color: '#722ed1' },
+    { title: 'Nội dung', value: stats?.totalMedia ?? 0, sub: `${stats?.published} đang hiển thị`, icon: <Film />, color: '#ee4d2d' },
+    { title: 'Lượt xem', value: stats?.totalViews ?? 0, icon: <Eye />, color: '#1677ff' },
+    { title: 'Lượt mở khoá', value: stats?.totalUnlocks ?? 0, icon: <Lock />, color: '#52c41a' },
+    { title: 'Click affiliate', value: stats?.totalClicks ?? 0, icon: <MousePointerClick />, color: '#722ed1' },
+    { title: isAdmin() ? 'Tổng lương phải trả' : 'Lương của bạn', value: formatVND(stats?.totalEarnings), icon: <Wallet />, color: '#eb2f96' },
   ]
 
   return (
@@ -56,7 +60,24 @@ export default function Dashboard() {
         </ResponsiveContainer>
       </Card>
 
-      <Card title="Top nội dung hút click">
+      {isAdmin() && (stats?.byUser?.length ?? 0) > 0 && (
+        <Card title="💰 Lương theo cộng tác viên">
+          <Table
+            rowKey="id"
+            pagination={false}
+            scroll={{ x: 'max-content' }}
+            dataSource={stats?.byUser || []}
+            columns={[
+              { title: 'Cộng tác viên', dataIndex: 'name' },
+              { title: 'Số bài', dataIndex: 'posts', width: 90 },
+              { title: 'Lượt xem', dataIndex: 'views', width: 100 },
+              { title: 'Lương', dataIndex: 'earnings', width: 130, render: (v) => <b className="text-brand">{formatVND(v)}</b> },
+            ]}
+          />
+        </Card>
+      )}
+
+      <Card title="Top nội dung nhiều lượt xem">
         <Table
           rowKey="_id"
           pagination={false}
@@ -64,10 +85,12 @@ export default function Dashboard() {
           dataSource={stats?.topMedia || []}
           columns={[
             { title: 'Tiêu đề', dataIndex: 'title' },
-            { title: 'Loại', dataIndex: 'type', width: 90, render: (t) => (t === 'video' ? '🎬 Video' : '🖼️ Ảnh') },
+            ...(isAdmin() ? [{ title: 'Tác giả', dataIndex: 'authorName', width: 130, render: (v: string) => v || '—' }] : []),
+            { title: 'Loại', dataIndex: 'type', width: 80, render: (t: string) => (t === 'video' ? '🎬' : '🖼️') },
             { title: 'Xem', dataIndex: 'views', width: 80 },
             { title: 'Mở khoá', dataIndex: 'unlocks', width: 90 },
             { title: 'Click', dataIndex: 'clicks', width: 80 },
+            { title: 'Lương', dataIndex: 'earnings', width: 110, render: (v: number) => formatVND(v) },
           ]}
         />
       </Card>

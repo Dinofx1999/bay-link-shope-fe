@@ -1,5 +1,5 @@
 import api from './client'
-import type { MediaItem, SiteConfig, Overview } from '../types'
+import type { MediaItem, SiteConfig, Overview, User } from '../types'
 
 // ── Auth ──────────────────────────────────────────────
 export const authApi = {
@@ -17,6 +17,15 @@ export const mediaApi = {
   create: (data: Partial<MediaItem>) => api.post('/media', data).then((r) => r.data),
   update: (id: string, data: Partial<MediaItem>) => api.put(`/media/${id}`, data).then((r) => r.data),
   remove: (id: string) => api.delete(`/media/${id}`).then((r) => r.data),
+}
+
+// ── Users (Admin) ─────────────────────────────────────
+export const usersApi = {
+  list: (): Promise<{ success: boolean; users: User[] }> => api.get('/users').then((r) => r.data),
+  create: (data: Partial<User> & { password: string }) => api.post('/users', data).then((r) => r.data),
+  update: (id: string, data: Partial<User> & { password?: string }) =>
+    api.put(`/users/${id}`, data).then((r) => r.data),
+  remove: (id: string) => api.delete(`/users/${id}`).then((r) => r.data),
 }
 
 // ── Upload ────────────────────────────────────────────

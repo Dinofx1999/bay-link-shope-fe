@@ -1,25 +1,30 @@
-// Lưu trạng thái "đã mở khoá" của từng nội dung vào localStorage, hạn 10 phút.
-// Bật nhớ 10 phút (cần cho luồng "quay lại thấy nội dung" trên webview Facebook).
+// Nhớ trạng thái "đã mở khoá" của từng nội dung. Thời hạn cấu hình được từ Cài đặt.
 const ENABLED = true
 
 const PREFIX = 'aff_unlock_'
-const TTL = 10 * 60 * 1000 // 10 phút
+let ttlMs = 10 * 60 * 1000 // mặc định 10 phút; App cập nhật theo cấu hình site
+
+// Đặt thời hạn nhớ (phút). 0 = tắt nhớ (mỗi lần vào đều phải bấm link).
+export function setUnlockTtlMinutes(minutes?: number) {
+  const m = Number(minutes)
+  ttlMs = Number.isFinite(m) && m >= 0 ? m * 60 * 1000 : 10 * 60 * 1000
+}
 
 export function markUnlocked(id: string) {
-  if (!ENABLED) return
+  if (!ENABLED || ttlMs <= 0) return
   try {
     localStorage.setItem(PREFIX + id, String(Date.now()))
   } catch {
-    /* localStorage có thể bị chặn ở chế độ ẩn danh — bỏ qua */
+    /* localStorage bị chặn — bỏ qua */
   }
 }
 
 export function isUnlocked(id: string): boolean {
-  if (!ENABLED) return false
+  if (!ENABLED || ttlMs <= 0) return false
   try {
     const t = Number(localStorage.getItem(PREFIX + id) || 0)
     if (!t) return false
-    if (Date.now() - t > TTL) {
+    if (Date.now() - t > ttlMs) {
       localStorage.removeItem(PREFIX + id)
       return false
     }

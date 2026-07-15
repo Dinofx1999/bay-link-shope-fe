@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Modal, Form, Input, Select, Switch, Button, Upload, message, Divider, Grid } from 'antd'
+import { Modal, Form, Input, Select, Switch, Button, Upload, message, Divider, Grid, InputNumber } from 'antd'
 import { Plus, Trash2, UploadCloud, X } from 'lucide-react'
 import { mediaApi, uploadApi } from '../../api'
 import type { MediaItem, GalleryItem } from '../../types'
+
+const isAdmin = () => JSON.parse(localStorage.getItem('aff_user') || '{}').role === 'Admin'
 
 // Đoán loại nội dung theo đuôi URL (cho trường hợp dán URL trực tiếp)
 function guessType(url: string): 'image' | 'video' {
@@ -261,6 +263,24 @@ export default function MediaForm({
             <Switch />
           </Form.Item>
         </div>
+
+        {/* Lương riêng cho bài — chỉ Admin thấy */}
+        {isAdmin() && (
+          <Form.Item
+            name="pay"
+            label="Lương riêng cho bài này (đồng)"
+            tooltip="Để trống/0 = dùng công thức lương chung ở Cài đặt hoặc lương/bài của cộng tác viên"
+          >
+            <InputNumber<number>
+              min={0}
+              step={1000}
+              className="!w-full"
+              placeholder="0 = theo công thức chung"
+              formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+              parser={(v) => Number((v || '').replace(/\./g, '')) || 0}
+            />
+          </Form.Item>
+        )}
       </Form>
     </Modal>
   )

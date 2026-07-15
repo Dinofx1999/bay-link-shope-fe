@@ -8,9 +8,11 @@ import AdminLogin from './pages/admin/Login'
 import AdminLayout from './layouts/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import MediaList from './pages/admin/MediaList'
+import Users from './pages/admin/Users'
 import Settings from './pages/admin/Settings'
 import { publicApi } from './api'
 import { applyTheme } from './utils/theme'
+import { setUnlockTtlMinutes } from './utils/unlockStore'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const token = localStorage.getItem('aff_token')
@@ -28,6 +30,7 @@ export default function App() {
         const c = r.config?.themeColor || '#ee4d2d'
         setThemeColor(c)
         applyTheme(c)
+        setUnlockTtlMinutes(r.config?.unlockTtlMinutes) // TTL nhớ mở khoá theo cấu hình
       })
       .catch(() => {})
   }, [])
@@ -52,6 +55,7 @@ export default function App() {
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="media" element={<MediaList />} />
+          <Route path="users" element={<Users />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
