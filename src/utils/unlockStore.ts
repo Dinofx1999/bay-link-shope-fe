@@ -1,10 +1,12 @@
 // Lưu trạng thái "đã mở khoá" của từng nội dung vào localStorage, hạn 10 phút.
-// Nhờ đó khách bấm qua link affiliate (kể cả Zalo điều hướng đi) → quay lại tự mở, khỏi click lại.
+// ⭐ TẠM TẮT để dễ test (mỗi lần tải là trạng thái mờ ban đầu). Bật lại: ENABLED = true.
+const ENABLED = false
 
 const PREFIX = 'aff_unlock_'
 const TTL = 10 * 60 * 1000 // 10 phút
 
 export function markUnlocked(id: string) {
+  if (!ENABLED) return
   try {
     localStorage.setItem(PREFIX + id, String(Date.now()))
   } catch {
@@ -13,6 +15,7 @@ export function markUnlocked(id: string) {
 }
 
 export function isUnlocked(id: string): boolean {
+  if (!ENABLED) return false
   try {
     const t = Number(localStorage.getItem(PREFIX + id) || 0)
     if (!t) return false
