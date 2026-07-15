@@ -16,6 +16,7 @@ export default function MediaGate({
 }) {
   const [unlocked, setUnlocked] = useState(false)
   const [items, setItems] = useState<GalleryItem[]>([])
+  const [seenBefore, setSeenBefore] = useState(false) // đã mở khoá trong 10 phút → khỏi qua Shopee lại
   const unlockedRef = useRef(false) // để listener đọc trạng thái mới nhất (tránh closure cũ)
 
   const viewLabel = buttonText || 'Bấm vào đây để xem'
@@ -43,17 +44,23 @@ export default function MediaGate({
   //   • vào trang, • quay lại từ bfcache (bấm Back trên Zalo/FB), • tab hiện lại.
   useEffect(() => {
     const check = () => {
-      if (!unlockedRef.current && isUnlocked(item._id)) reveal(true)
+      if (isUnlocked(item._id)) {
+        setSeenBefore(true) // đánh dấu để đổi nút thành "Xem ngay" (không cần qua Shopee lại)
+        if (!unlockedRef.current) reveal(true)
+      }
     }
     check()
     const onPageShow = () => check()
     const onVisible = () => {
       if (document.visibilityState === 'visible') check()
     }
+    // nhiều sự kiện để chắc ăn trên iOS/Facebook webview
     window.addEventListener('pageshow', onPageShow)
+    window.addEventListener('focus', check)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       window.removeEventListener('pageshow', onPageShow)
+      window.removeEventListener('focus', check)
       document.removeEventListener('visibilitychange', onVisible)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,6 +75,15 @@ export default function MediaGate({
   }
 
   const hasLinks = (item.affiliateLinks || []).length > 0
+
+  // Ảnh mờ nền (dùng chung cho 2 trạng thái khoá)
+  const thumb = item.thumbnailUrl ? (
+    <img src={item.thumbnailUrl} className="w-full max-h-[55vh] object-cover locked-blur" />
+  ) : (
+    <div className="w-full h-72 grid place-items-center text-6xl locked-blur bg-gray-800">
+      {item.type === 'video' ? '🎬' : '🖼️'}
+    </div>
+  )
 
   return (
     <>
@@ -90,8 +106,22 @@ export default function MediaGate({
               </div>
             ))}
           </div>
+        ) : seenBefore ? (
+          // ⭐ ĐÃ mở khoá trong 10 phút → bấm để xem NGAY, KHÔNG cần qua Shopee lại
+          <div onClick={() => reveal(true)} className="relative block cursor-pointer select-none">
+            {thumb}
+            <div className="absolute inset-0 bg-black/40 grid place-items-center text-white text-center px-6">
+              <div>
+                <div className="w-16 h-16 mx-auto rounded-full bg-green-500/80 grid place-items-center mb-3">
+                  <Eye size={30} />
+                </div>
+                <p className="font-semibold">Bạn đã mở khoá nội dung này</p>
+                <p className="text-white/80 text-sm mt-1">Bấm vào đây để xem ngay 👆</p>
+              </div>
+            </div>
+          </div>
         ) : (
-          // ⭐ Bấm thẳng vào vùng khoá (ảnh mờ + ổ khoá) để mở link — dùng thẻ <a> mở ngữ cảnh mới
+          // Bấm thẳng vào vùng khoá để mở link — dùng thẻ <a> mở ngữ cảnh mới (không kẹt Back)
           <a
             href={hasLinks ? publicApi.goUrl(item._id, 0) : undefined}
             target="_blank"
@@ -99,13 +129,7 @@ export default function MediaGate({
             onClick={onUnlockClick}
             className="relative block cursor-pointer select-none"
           >
-            {item.thumbnailUrl ? (
-              <img src={item.thumbnailUrl} className="w-full max-h-[55vh] object-cover locked-blur" />
-            ) : (
-              <div className="w-full h-72 grid place-items-center text-6xl locked-blur bg-gray-800">
-                {item.type === 'video' ? '🎬' : '🖼️'}
-              </div>
-            )}
+            {thumb}
             <div className="absolute inset-0 bg-black/40 grid place-items-center text-white text-center px-6">
               <div>
                 <div className="w-16 h-16 mx-auto rounded-full bg-white/15 grid place-items-center mb-3 transition hover:bg-white/25">
@@ -128,27 +152,35 @@ export default function MediaGate({
           <div className="flex items-center gap-2 text-green-600 bg-green-50 rounded-lg px-3 py-2 text-sm">
             <CheckCircle2 size={18} /> Đã mở khoá! Chúc bạn xem vui vẻ 💚
           </div>
-        ) : (
-          !multi && <p className="text-xs text-gray-500 mb-1 text-center">Bấm nút bên dưới để mở khoá xem nội dung</p>
-        )}
-
-        {(item.affiliateLinks || []).map((link) => (
-          <a
-            key={link.index}
-            href={publicApi.goUrl(item._id, link.index!)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onUnlockClick}
-            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3.5 rounded-xl transition text-base"
+        ) : seenBefore ? (
+          // Đã mở khoá trước đó → 1 nút xem ngay (không qua Shopee lại)
+          <button
+            onClick={() => reveal(true)}
+            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-xl transition text-base"
           >
-            <Eye size={20} />
-            {viewLabel}
-            {multi && <span className="opacity-80 font-normal text-sm">({link.label})</span>}
-          </a>
-        ))}
-
-        {(!item.affiliateLinks || item.affiliateLinks.length === 0) && (
-          <p className="text-center text-sm text-gray-400 py-2">Chưa có link cho nội dung này.</p>
+            <Eye size={20} /> Xem ngay
+          </button>
+        ) : (
+          <>
+            {!multi && <p className="text-xs text-gray-500 mb-1 text-center">Bấm nút bên dưới để mở khoá xem nội dung</p>}
+            {(item.affiliateLinks || []).map((link) => (
+              <a
+                key={link.index}
+                href={publicApi.goUrl(item._id, link.index!)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onUnlockClick}
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3.5 rounded-xl transition text-base"
+              >
+                <Eye size={20} />
+                {viewLabel}
+                {multi && <span className="opacity-80 font-normal text-sm">({link.label})</span>}
+              </a>
+            ))}
+            {!hasLinks && (
+              <p className="text-center text-sm text-gray-400 py-2">Chưa có link cho nội dung này.</p>
+            )}
+          </>
         )}
       </div>
     </>
