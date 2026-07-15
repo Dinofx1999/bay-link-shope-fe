@@ -54,7 +54,9 @@ export const publicApi = {
   site: () => api.get('/public/site').then((r) => r.data),
   list: (params: any = {}) => api.get('/public/media', { params }).then((r) => r.data),
   detail: (id: string) => api.get(`/public/media/${id}`).then((r) => r.data),
-  unlock: (id: string) => api.post(`/public/unlock/${id}`).then((r) => r.data),
+  // restore=true: tự mở lại từ localStorage (KHÔNG tăng bộ đếm mở khoá)
+  unlock: (id: string, restore = false) =>
+    api.post(`/public/unlock/${id}`, { restore }).then((r) => r.data),
   // URL cổng affiliate (mở tab mới) — backend ghi log rồi redirect 302
   goUrl: (id: string, index: number) => `/api/public/go/${id}/${index}`,
 }

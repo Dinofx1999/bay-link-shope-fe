@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { publicApi } from '../../api'
 import type { MediaItem, GalleryItem } from '../../types'
 import { Lock, Eye, CheckCircle2 } from 'lucide-react'
+import { markUnlocked, isUnlocked } from '../../utils/unlockStore'
 
 // Phần "cổng khoá + nút mở khoá xem" — dùng chung cho modal (trang chủ) và trang chia sẻ /m/:id
 export default function MediaGate({
@@ -20,13 +21,10 @@ export default function MediaGate({
   const viewLabel = buttonText || 'Bấm vào đây để xem'
   const multi = (item.affiliateLinks || []).length > 1
 
-  // Bấm vào ưu đãi → mở link affiliate (tab mới, qua cổng /go ghi log) + mở khoá nội dung
-  const handleUnlock = async (index: number) => {
-    window.open(publicApi.goUrl(item._id, index), '_blank', 'noopener')
-    setLoading(true)
+  // Lấy nội dung đầy đủ để hiển thị. restore=true → tự mở lại (không tăng bộ đếm).
+  const reveal = async (restore: boolean) => {
     try {
-      const res = await publicApi.unlock(item._id)
-      // hỗ trợ cả API mới (items[]) lẫn cũ (mediaUrl)
+      const res = await publicApi.unlock(item._id, restore)
       const gallery: GalleryItem[] = res.media.items?.length
         ? res.media.items
         : res.media.mediaUrl
@@ -35,10 +33,26 @@ export default function MediaGate({
       setItems(gallery)
       setUnlocked(true)
     } catch {
-      /* vẫn mở link affiliate dù unlock lỗi */
-    } finally {
-      setLoading(false)
+      /* bỏ qua */
     }
+  }
+
+  // Khi mở lại trang: nếu đã mở khoá trong 10 phút gần đây → tự hiện nội dung, khỏi click.
+  useEffect(() => {
+    if (isUnlocked(item._id)) reveal(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item._id])
+
+  // Bấm vào ổ khoá / nút ưu đãi → mở link affiliate + mở khoá nội dung
+  const handleUnlock = async (index: number) => {
+    // ⭐ LƯU localStorage TRƯỚC khi mở link — phòng trường hợp Zalo điều hướng đi ngay,
+    //    quay lại vẫn còn dấu "đã mở khoá" để tự hiện nội dung.
+    markUnlocked(item._id)
+    const link = item.affiliateLinks?.[index]
+    if (link) window.open(publicApi.goUrl(item._id, index), '_blank', 'noopener')
+    setLoading(true)
+    await reveal(false)
+    setLoading(false)
   }
 
   return (
@@ -63,7 +77,12 @@ export default function MediaGate({
             ))}
           </div>
         ) : (
-          <div className="relative">
+          // ⭐ Bấm thẳng vào vùng khoá (ảnh mờ + ổ khoá) để mở link luôn — dùng link đầu tiên
+          <div
+            className="relative cursor-pointer select-none"
+            onClick={() => !loading && handleUnlock(0)}
+            role="button"
+          >
             {item.thumbnailUrl ? (
               <img src={item.thumbnailUrl} className="w-full max-h-[55vh] object-cover locked-blur" />
             ) : (
@@ -73,11 +92,11 @@ export default function MediaGate({
             )}
             <div className="absolute inset-0 bg-black/40 grid place-items-center text-white text-center px-6">
               <div>
-                <div className="w-16 h-16 mx-auto rounded-full bg-white/15 grid place-items-center mb-3">
+                <div className="w-16 h-16 mx-auto rounded-full bg-white/15 grid place-items-center mb-3 transition hover:bg-white/25">
                   <Lock size={30} />
                 </div>
                 <p className="font-semibold">Nội dung đang bị khoá</p>
-                <p className="text-white/80 text-sm mt-1">{lockMessage || 'Bấm nút bên dưới để mở khoá 👇'}</p>
+                <p className="text-white/80 text-sm mt-1">{lockMessage || 'Bấm vào đây để mở khoá xem 👆'}</p>
               </div>
             </div>
           </div>
