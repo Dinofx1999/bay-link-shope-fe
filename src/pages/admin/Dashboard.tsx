@@ -28,7 +28,7 @@ export default function Dashboard() {
     { title: 'Nội dung', value: stats?.totalMedia ?? 0, sub: `${stats?.published} đang hiển thị`, icon: <Film />, color: '#ee4d2d' },
     { title: 'Lượt xem', value: stats?.totalViews ?? 0, icon: <Eye />, color: '#1677ff' },
     { title: 'Lượt mở khoá', value: stats?.totalUnlocks ?? 0, icon: <Lock />, color: '#52c41a' },
-    { title: 'Click affiliate', value: stats?.totalClicks ?? 0, icon: <MousePointerClick />, color: '#722ed1' },
+    { title: 'Click hợp lệ', value: stats?.totalClicks ?? 0, sub: `${stats?.rawClicks ?? 0} click thô (gồm trùng)`, icon: <MousePointerClick />, color: '#722ed1' },
     { title: isAdmin() ? 'Tổng lương phải trả' : 'Lương của bạn', value: formatVND(stats?.totalEarnings), icon: <Wallet />, color: '#eb2f96' },
   ]
 

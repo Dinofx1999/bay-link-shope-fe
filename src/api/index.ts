@@ -68,9 +68,19 @@ export const publicApi = {
     api.post(`/public/unlock/${id}`, { restore }).then((r) => r.data),
   // URL cổng affiliate (mở tab mới) — backend ghi log rồi redirect 302
   goUrl: (id: string, index: number) => `/api/public/go/${id}/${index}`,
-  // Ghi log click NGẦM (không cản trở việc mở link) — dùng khi bấm link Shopee trực tiếp
+  // Ghi log click NGẦM (không cản trở việc mở link) — kèm id thiết bị để chống spam click
   logClick: (id: string, index: number) => {
-    const url = `/api/public/click/${id}/${index}`
+    let vid = ''
+    try {
+      vid = localStorage.getItem('aff_vid') || ''
+      if (!vid) {
+        vid = Math.random().toString(36).slice(2) + Date.now().toString(36)
+        localStorage.setItem('aff_vid', vid)
+      }
+    } catch {
+      /* localStorage bị chặn — bỏ qua */
+    }
+    const url = `/api/public/click/${id}/${index}?vid=${encodeURIComponent(vid)}`
     try {
       if (navigator.sendBeacon) navigator.sendBeacon(url)
       else fetch(url, { method: 'POST', keepalive: true }).catch(() => {})

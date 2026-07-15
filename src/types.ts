@@ -64,6 +64,7 @@ export interface SiteConfig {
   unlockButtonText: string
   unlockTtlMinutes: number
   salary?: SalaryConfig
+  clickDedupHours: number
   contact: { facebook: string; tiktok: string; zalo: string }
 }
 
@@ -73,6 +74,7 @@ export interface Overview {
   totalViews: number
   totalUnlocks: number
   totalClicks: number
+  rawClicks?: number
   totalEarnings: number
   topMedia: Array<{ _id: string; title: string; type: string; views: number; unlocks: number; clicks: number; authorName?: string; earnings?: number }>
   byUser?: Array<{ id: string; name: string; posts: number; views: number; earnings: number }>

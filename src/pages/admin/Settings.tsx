@@ -117,6 +117,13 @@ export default function Settings() {
           <p className="text-xs text-gray-400 -mt-1 mb-2">
             Thứ tự ưu tiên: lương riêng của bài → lương/bài của cộng tác viên → công thức chung ở đây.
           </p>
+          <Form.Item
+            name="clickDedupHours"
+            label="Chống spam click — cùng 1 người trong (giờ) chỉ tính 1 click"
+            tooltip="Chống cộng tác viên tự bấm link nhiều lần để ăn lương. Cùng IP/thiết bị bấm lại trong khoảng này KHÔNG được tính thêm. 0 = tắt."
+          >
+            <InputNumber<number> min={0} max={720} step={1} className="!w-full" addonAfter="giờ" />
+          </Form.Item>
 
           <Divider orientation="left" className="!text-sm">Liên hệ / Mạng xã hội</Divider>
           <Form.Item name={['contact', 'facebook']} label="Facebook">
