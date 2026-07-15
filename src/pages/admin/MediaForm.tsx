@@ -59,24 +59,16 @@ export default function MediaForm({
     }
   }, [open, item])
 
-  // Upload NHIỀU file nội dung → thêm hết vào gallery
-  const doUploadMedia = async (files: File[]) => {
+  // Upload TỪNG file nội dung → thêm vào gallery (gọi mỗi file 1 lần, chọn nhiều cũng chạy hết)
+  const doUploadOne = async (file: File) => {
     setUploadingMedia(true)
     try {
-      const results = await Promise.all(files.map((f) => uploadApi.file(f)))
-      const added: GalleryItem[] = results.map((r) => ({ type: r.type, url: r.url }))
-      setMediaList((prev) => {
-        const next = [...prev, ...added]
-        // tự lấy ảnh đầu tiên làm thumbnail nếu chưa có
-        if (!thumbnailUrl) {
-          const firstImg = next.find((m) => m.type === 'image')
-          if (firstImg) setThumbnailUrl(firstImg.url)
-        }
-        return next
-      })
-      message.success(`Đã tải lên ${added.length} file`)
+      const res = await uploadApi.file(file)
+      setMediaList((prev) => [...prev, { type: res.type, url: res.url }])
+      // tự lấy ảnh đầu tiên làm thumbnail nếu chưa có
+      setThumbnailUrl((t) => t || (res.type === 'image' ? res.url : t))
     } catch (e: any) {
-      message.error(e.response?.data?.message || 'Tải lên thất bại')
+      message.error(`${file.name}: ${e.response?.data?.message || 'tải lên thất bại'}`)
     } finally {
       setUploadingMedia(false)
     }
@@ -163,9 +155,9 @@ export default function MediaForm({
               showUploadList={false}
               multiple
               accept="image/*,video/*"
-              beforeUpload={(file, fileList) => {
-                // beforeUpload chạy cho từng file — chỉ kích hoạt 1 lần ở file đầu, tải cả lô
-                if (file === fileList[0]) doUploadMedia(fileList as File[])
+              beforeUpload={(file) => {
+                // gọi cho TỪNG file được chọn → thêm hết vào gallery
+                doUploadOne(file as File)
                 return Upload.LIST_IGNORE
               }}
             >
