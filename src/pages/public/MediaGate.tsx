@@ -16,7 +16,6 @@ export default function MediaGate({
 }) {
   const [unlocked, setUnlocked] = useState(false)
   const [items, setItems] = useState<GalleryItem[]>([])
-  const [loading, setLoading] = useState(false)
   const unlockedRef = useRef(false) // để listener đọc trạng thái mới nhất (tránh closure cũ)
 
   const viewLabel = buttonText || 'Bấm vào đây để xem'
@@ -60,24 +59,15 @@ export default function MediaGate({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item._id])
 
-  // Bấm vào ổ khoá / nút ưu đãi → mở link affiliate + mở khoá nội dung
-  const handleUnlock = async (index: number) => {
-    // ⭐ LƯU localStorage TRƯỚC khi rời trang — quay lại vẫn còn dấu "đã mở khoá".
+  // Khi bấm ổ khoá / nút ưu đãi: đánh dấu đã mở + thử hiện ngay.
+  // KHÔNG tự điều hướng — để thẻ <a target="_blank"> mở link ở ngữ cảnh mới,
+  // nhờ đó trang /m/:id ĐỨNG YÊN (không làm bẩn lịch sử → không kẹt nút Back trên FB/Zalo).
+  const onUnlockClick = () => {
     markUnlocked(item._id)
-    const link = item.affiliateLinks?.[index]
-    if (link) {
-      const url = publicApi.goUrl(item._id, index)
-      const win = window.open(url, '_blank')
-      // Trình duyệt trong FB/Zalo hay CHẶN mở tab mới → win null → chuyển hướng cùng tab
-      if (!win) {
-        window.location.href = url
-        return // trang đang rời đi; khi quay lại sẽ tự mở khoá qua listener ở trên
-      }
-    }
-    setLoading(true)
-    await reveal(false)
-    setLoading(false)
+    reveal(false)
   }
+
+  const hasLinks = (item.affiliateLinks || []).length > 0
 
   return (
     <>
@@ -101,11 +91,13 @@ export default function MediaGate({
             ))}
           </div>
         ) : (
-          // ⭐ Bấm thẳng vào vùng khoá (ảnh mờ + ổ khoá) để mở link luôn — dùng link đầu tiên
-          <div
-            className="relative cursor-pointer select-none"
-            onClick={() => !loading && handleUnlock(0)}
-            role="button"
+          // ⭐ Bấm thẳng vào vùng khoá (ảnh mờ + ổ khoá) để mở link — dùng thẻ <a> mở ngữ cảnh mới
+          <a
+            href={hasLinks ? publicApi.goUrl(item._id, 0) : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onUnlockClick}
+            className="relative block cursor-pointer select-none"
           >
             {item.thumbnailUrl ? (
               <img src={item.thumbnailUrl} className="w-full max-h-[55vh] object-cover locked-blur" />
@@ -123,7 +115,7 @@ export default function MediaGate({
                 <p className="text-white/80 text-sm mt-1">{lockMessage || 'Bấm vào đây để mở khoá xem 👆'}</p>
               </div>
             </div>
-          </div>
+          </a>
         )}
       </div>
 
@@ -141,16 +133,18 @@ export default function MediaGate({
         )}
 
         {(item.affiliateLinks || []).map((link) => (
-          <button
+          <a
             key={link.index}
-            disabled={loading}
-            onClick={() => handleUnlock(link.index!)}
-            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl transition text-base"
+            href={publicApi.goUrl(item._id, link.index!)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onUnlockClick}
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white font-semibold py-3.5 rounded-xl transition text-base"
           >
             <Eye size={20} />
             {viewLabel}
             {multi && <span className="opacity-80 font-normal text-sm">({link.label})</span>}
-          </button>
+          </a>
         ))}
 
         {(!item.affiliateLinks || item.affiliateLinks.length === 0) && (
