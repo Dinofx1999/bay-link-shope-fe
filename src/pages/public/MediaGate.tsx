@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { publicApi } from '../../api'
 import type { MediaItem, GalleryItem } from '../../types'
 import { Lock, Eye, CheckCircle2 } from 'lucide-react'
@@ -17,12 +17,14 @@ export default function MediaGate({
   const [unlocked, setUnlocked] = useState(false)
   const [items, setItems] = useState<GalleryItem[]>([])
   const [loading, setLoading] = useState(false)
+  const unlockedRef = useRef(false) // để listener đọc trạng thái mới nhất (tránh closure cũ)
 
   const viewLabel = buttonText || 'Bấm vào đây để xem'
   const multi = (item.affiliateLinks || []).length > 1
 
   // Lấy nội dung đầy đủ để hiển thị. restore=true → tự mở lại (không tăng bộ đếm).
   const reveal = async (restore: boolean) => {
+    if (unlockedRef.current) return
     try {
       const res = await publicApi.unlock(item._id, restore)
       const gallery: GalleryItem[] = res.media.items?.length
@@ -31,25 +33,47 @@ export default function MediaGate({
         ? [{ type: res.media.type, url: res.media.mediaUrl }]
         : []
       setItems(gallery)
+      unlockedRef.current = true
       setUnlocked(true)
     } catch {
       /* bỏ qua */
     }
   }
 
-  // Khi mở lại trang: nếu đã mở khoá trong 10 phút gần đây → tự hiện nội dung, khỏi click.
+  // Tự hiện nội dung nếu đã mở khoá trong 10 phút — chạy khi:
+  //   • vào trang, • quay lại từ bfcache (bấm Back trên Zalo/FB), • tab hiện lại.
   useEffect(() => {
-    if (isUnlocked(item._id)) reveal(true)
+    const check = () => {
+      if (!unlockedRef.current && isUnlocked(item._id)) reveal(true)
+    }
+    check()
+    const onPageShow = () => check()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check()
+    }
+    window.addEventListener('pageshow', onPageShow)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('pageshow', onPageShow)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item._id])
 
   // Bấm vào ổ khoá / nút ưu đãi → mở link affiliate + mở khoá nội dung
   const handleUnlock = async (index: number) => {
-    // ⭐ LƯU localStorage TRƯỚC khi mở link — phòng trường hợp Zalo điều hướng đi ngay,
-    //    quay lại vẫn còn dấu "đã mở khoá" để tự hiện nội dung.
+    // ⭐ LƯU localStorage TRƯỚC khi rời trang — quay lại vẫn còn dấu "đã mở khoá".
     markUnlocked(item._id)
     const link = item.affiliateLinks?.[index]
-    if (link) window.open(publicApi.goUrl(item._id, index), '_blank', 'noopener')
+    if (link) {
+      const url = publicApi.goUrl(item._id, index)
+      const win = window.open(url, '_blank')
+      // Trình duyệt trong FB/Zalo hay CHẶN mở tab mới → win null → chuyển hướng cùng tab
+      if (!win) {
+        window.location.href = url
+        return // trang đang rời đi; khi quay lại sẽ tự mở khoá qua listener ở trên
+      }
+    }
     setLoading(true)
     await reveal(false)
     setLoading(false)
